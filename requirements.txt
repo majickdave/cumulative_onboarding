@@ -2,5 +2,3 @@ pandas
 numpy
 plotly
 streamlit
-datetime
-time
