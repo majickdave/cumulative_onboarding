@@ -327,7 +327,7 @@ def render_metric_card(data, label: str, value: int, delta_pct: float, period_da
 @st.cache_data
 def load_data():
     
-    file_path = '/Users/davidsamuel/Desktop/mindtree_repo/cumulative_onboarding_dash/data/client_onboarding_dates.csv'
+    file_path = '/Users/davidsamuel/Desktop/mindtree_repo/cumulative_onboarding/data/dates.csv'
     # load data
     df = pd.read_csv(file_path, encoding='utf-8')
 
