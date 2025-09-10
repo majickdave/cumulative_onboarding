@@ -205,12 +205,12 @@ def create_combined_data(current_data, previous_data):
     return combined_data, delta_pct, curr_line_color
 
 
-def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, curr_line_color):
+def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True):
     # instantiate figure in case there is no data
     fig = go.Figure()
 
     # current period line
-    if curr['count'].max() > 0:
+    if curr['count'].max() > 0 and lines:
         # draw line chart current data
         fig.add_trace(go.Scatter(
             x=curr['date_created'],
@@ -222,7 +222,7 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
             ))
         curr_markers = curr[curr['count'] > 0]
     # previous period line
-    if prev['count'].max() > 0:
+    if prev['count'].max() > 0 and lines:
         # draw line chart previous data
         fig.add_trace(go.Scatter(
         x=prev['date_created'],
@@ -233,8 +233,8 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
         name=f'Previous Period'
         ))
 
-     # add the markers   
-    if prev['count'].max() > 0:
+     # add the current markers   
+    if prev['count'].max() > 0 and markers:
         prev_markers = prev[prev['count'] > 0]
             # add markers for prev data
         fig.add_trace(go.Scatter(
@@ -243,15 +243,17 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
             text=prev_markers['count'],
             line_color='grey',
             mode='markers',
-            textposition="top center",
+            marker_symbol=105,
+            marker=dict(opacity=0.5),
+            textposition="top right",
             hovertemplate='<b>Previous Period Marker</b><br>' +
                         'Date: %{x|%a, %b %d %Y}<br>' +
                         'Cumulative Sum: %{y}<br>' +
                         'Count: %{text}<br>' +
                         '<extra></extra>'
         ))
-
-    if curr['count'].max() > 0:
+    # previous markers
+    if curr['count'].max() > 0 and markers:
         curr_markers = curr[curr['count'] > 0]
         fig.add_trace(go.Scatter(
             x=curr_markers['date_created'],
@@ -259,12 +261,15 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
             text=curr_markers['count'],
             line_color=curr_line_color,
             mode='markers',
-            textposition="top center",
+            marker_symbol=105,
+            marker=dict(opacity=0.5),
+            textposition="bottom left",
             hovertemplate='<b>Current Period Marker</b><br>' +
                         'Date: %{x|%a, %b %d %Y}<br>' +
                         'Cumulative Sum: %{y}<br>' +
                         'Count: %{text}<br>' +
                         '<extra></extra>'
+            
         ))
 
 
@@ -273,7 +278,8 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
 
     # add title
     fig.update_layout(
-        height=200,
+        
+        height=100,
         width=200,
         showlegend=False,
         # title=dict(text=title_text,
@@ -281,8 +287,10 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
         #     font=dict(size=12))),
         xaxis_title=None,
         yaxis_title=None,
+        xaxis=dict(fixedrange=True),
+        yaxis=dict(fixedrange=True),
         margin=dict(
-        t=50,  # Top margin
+        t=0,  # Top margin
         b=0,
         ),
     )
@@ -292,34 +300,14 @@ def create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, cu
     
     return fig
 
-def generate_streamlit_chart(current_data, previous_data, days):
+def generate_streamlit_chart(current_data, previous_data):
     # generate first period chart
     combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
     curr = combined_data[combined_data['period'] == 'current']
     prev = combined_data[combined_data['period'] == 'previous']
-    curr_cumsum_max = combined_data[combined_data['period'] == 'current']['cumsum'].max()
-    prev_cumsum_max = combined_data[combined_data['period'] == 'previous']['cumsum'].max()
 
-    fig = create_combined_chart(curr, prev, curr_cumsum_max, prev_cumsum_max, days, curr_line_color)
+    fig = create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
     st.plotly_chart(fig)
-
-def render_metric_card(data, label: str, value: int, delta_pct: float, period_days: int):
-    """
-    Render a metric card with consistent styling.
-    
-    Args:
-        label: Metric label
-        value: Metric value
-        delta: Optional delta/change indicator
-        help_text: Optional help text
-    """
-    
-    st.metric(label=label, 
-    value=value, 
-    delta=f"{delta_pct*100:.1f}%")
-    current_data, previous_data = data
-    with st.container(border=False):
-        generate_streamlit_chart(current_data, previous_data, period_days)
 
 @st.cache_data
 def load_data():
@@ -336,7 +324,7 @@ def load_data():
 
 # load data
 df = load_data()
-st.set_page_config(page_title=None, page_icon="📈", layout='wide', initial_sidebar_state=None, menu_items=None)
+st.set_page_config(page_title=None, page_icon="📈", layout='centered', initial_sidebar_state=None, menu_items=None)
 # create a container for the header
 # create a container for the title and description
 header_container = st.container()
@@ -362,7 +350,7 @@ with col1:
         value=f"{current_data['cumsum'].max()} v {previous_data['cumsum'].max()}", 
         delta=f"{delta_pct*100:.1f}%")
     with st.container(border=False):
-        generate_streamlit_chart(current_data, previous_data, days)
+        generate_streamlit_chart(current_data, previous_data)
     
     # with curr_tab:
     #     generate_streamlit_chart(current_data, previous_data, days)
@@ -373,7 +361,7 @@ with col2:
     value=f"{previous_data['cumsum'].max()} v {previous_data2['cumsum'].max()}", 
     delta=f"{delta_pct*100:.1f}%")
     with st.container(border=False):
-        generate_streamlit_chart(previous_data, previous_data2, days)
+        generate_streamlit_chart(previous_data, previous_data2)
     # with prev_tab: 
     #     generate_streamlit_chart(previous_data, previous_data2, days)
 
@@ -386,6 +374,6 @@ with col3:
         st.metric(label="Overall v. Last Period", 
         value=f"{current_data['cumsum'].max()} v {previous_data['cumsum'].max()}", 
         delta=f"{delta_pct*100:.1f}%")
-        generate_streamlit_chart(current_data, previous_data, days)
+        generate_streamlit_chart(current_data, previous_data)
     # with overall_tab:
     #     generate_streamlit_chart(current_data, previous_data, days)
