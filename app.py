@@ -336,7 +336,7 @@ def load_data():
 
 # load data
 df = load_data()
-st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state=None, menu_items=None)
+st.set_page_config(page_title=None, page_icon="📈", layout='wide', initial_sidebar_state=None, menu_items=None)
 # create a container for the header
 # create a container for the title and description
 header_container = st.container()
