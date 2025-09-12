@@ -146,7 +146,7 @@ def get_delta_pct(current_data, previous_data):
     delta_pct = (curr_cumsum_max - prev_cumsum_max) / prev_cumsum_max
     # set line color based on delta
     if delta_pct < 0:
-        curr_line_color = '#D62728'
+        curr_line_color = '#ff2b2b'
     else:
         curr_line_color = '#2CA02C'
 
@@ -193,7 +193,7 @@ def create_combined_data(current_data, previous_data):
 def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True):
     # instantiate figure in case there is no data
     fig = go.Figure()
-
+    marker_size = 4
 
     # current period line
     if curr['count'].max() > 0 and lines:
@@ -202,14 +202,10 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
             x=curr['date_created'],
             y=curr['combined_cumsum'],
             text=curr['count'],
-            line_color=curr_line_color,
+            line_color='rgba(214,39,40, 0.3)' if curr_line_color == '#ff2b2b' else 'rgba(44,160,44, 0.3)',
             # fill='tozeroy',
             mode='lines',
             name=f'Current Period',
-            hoverlabel=dict(
-                # bgcolor= curr_line_color # Set background color for all hover labels (if not overridden by trace)
-                bordercolor=curr_line_color
-            )
             ))
         curr_markers = curr[curr['count'] > 0]
 
@@ -234,11 +230,17 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
             x=prev_markers['date_created'],
             y=prev_markers['combined_cumsum'],
             text=prev_markers['count'],
-            line_color='grey',
+            line_color=None,
             mode='markers',
             # marker_symbol=105,
-            marker=dict(size=5),
+            marker=dict(size=marker_size, color='white', line=dict(width=1,
+                                        color='grey',
+                                        )),
             textposition="top right",
+            hoverlabel=dict(
+                # bgcolor= curr_line_color # Set background color for all hover labels (if not overridden by trace)
+                bordercolor='grey'
+            ), 
         ))
     
     # Curr markers
@@ -248,10 +250,13 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
             x=curr_markers['date_created'],
             y=curr_markers['combined_cumsum'],
             text=curr_markers['count'],
-            line_color=curr_line_color,
+            line_color=None,
             mode='markers',
             # marker_symbol=105,
-            marker=dict(size=5),
+            marker=dict(size=marker_size, color='white', 
+                        line=dict(width=1,
+                        color=curr_line_color,
+                        )),
             textposition="bottom left",
             hoverlabel=dict(
                 # bgcolor= curr_line_color # Set background color for all hover labels (if not overridden by trace)
@@ -266,7 +271,7 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
     fig.update_traces(
         hovertemplate='<b>%{x|%B %d}</b><br>' +
             'Total: %{y}<br>' +
-            'Today: %{text}<br>' +
+            'Onboarded: %{text}<br>' +
             '<extra></extra>',
     )
 
@@ -294,7 +299,7 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
         yaxis=dict(fixedrange=True),
         margin=dict(
         t=30,  # Top margin
-        b=20
+        b=20,
         ),
     )
     return fig
@@ -354,7 +359,7 @@ col1, col2, col3 = container.columns(3, border=False)
 st.spinner('Loading data...')
 with col1:
     combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
-    st.metric(label=f"last {days} days v. {days} to {days*2} days", 
+    st.metric(label=f"last {days} days v. {days} to {days*2} days, Previous Total: {previous_data['cumsum'].max()}", 
         value=f"{current_data['cumsum'].max()}", 
         delta=f"{delta_pct*100:.1f}%")
     with st.container(border=False):
@@ -365,7 +370,7 @@ with col1:
 
 with col2:
     combined_data, delta_pct, curr_line_color = create_combined_data(previous_data, previous_data2)
-    st.metric(label=f"{days} to {days*2} days v. {days*3} to {days*2} days", 
+    st.metric(label=f"{days} to {days*2} days v. {days*2} to {days*3} days, Previous Total: {previous_data2['cumsum'].max()}", 
         value=f"{previous_data['cumsum'].max()}",  
     delta=f"{delta_pct*100:.1f}%")
     with st.container(border=False):
@@ -379,7 +384,7 @@ with col3:
         days *= 2
         current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
         combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
-        st.metric(label=f"last {days} days v. {days*2} to {days} days", 
+        st.metric(label=f"last {days} days v. {days} to {days*2} days, Previous Total: {previous_data['cumsum'].max()}",  
             value=f"{current_data['cumsum'].max()}",  
             delta=f"{delta_pct*100:.1f}%")
         generate_streamlit_chart(current_data, previous_data)
