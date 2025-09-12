@@ -141,9 +141,18 @@ def get_delta_pct(current_data, previous_data):
     """
     # get the delta with combined data
     curr_cumsum_max = current_data['cumsum'].max()
-    prev_cumsum_max = previous_data['cumsum'].max() if previous_data['cumsum'].max() != 0 else 1
+    prev_cumsum_max = previous_data['cumsum'].max()
 
-    delta_pct = (curr_cumsum_max - prev_cumsum_max) / prev_cumsum_max
+    def calc_delta():
+        if prev_cumsum_max == 0:
+            # handle edge case: no valid baseline
+            if curr_cumsum_max == 0:
+                return 0.0
+            else:
+                return 1.0  # or 100.0 if you want capped growth
+        return (((curr_cumsum_max - prev_cumsum_max) / prev_cumsum_max))
+    
+    delta_pct = calc_delta()
     # set line color based on delta
     if delta_pct < 0:
         curr_line_color = '#ff2b2b'
@@ -287,7 +296,7 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
 
      # add title
     fig.update_layout(
-        height=130,
+        height=200,
         width=200,
         showlegend=False,
         # title=dict(text=title_text,
@@ -335,22 +344,37 @@ def load_data():
 
 # load data
 df = load_data()
-st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='wide', 
+st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='centered', 
                    initial_sidebar_state=None, menu_items=None)
 # create a container for the header
 # create a container for the title and description
+
 header_container = st.container()
 with header_container:
-    st.header('Cumulative Onboarding Analysis')
-    st.markdown('Compare current, previous and overall periods for the selected window')
-    # Newest patient
-    # header_container.write(df[df['ClientId'] >= df['ClientId'].max() - 5][['ClientId', 'date_created', 'Name']])
+  
+    
     # set base window days
-    days = st.number_input("Select window days", value=30, min_value=1, max_value=90)
+        # Newest patient
+    days = 180
+    current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
+    combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
+    st.header(f"Total Onboarded this year: {combined_data['combined_cumsum'].max()}")
+    st.metric(label=f"Total Onboarded past {days} days", 
+        value=f"{current_data['cumsum'].max()}", 
+        delta=f"{delta_pct*100:.1f}%")
+    with st.container(border=False):
+        generate_streamlit_chart(current_data, previous_data)
+
+
+st.markdown('Compare current, previous and overall periods for the selected window')  
+days = st.number_input("Select window days", value=30, min_value=1, max_value=90)
 
 st.spinner('Loading data...')
 # create window data
 current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
+
+
+
 # create a container for the metrics
 container = st.container()
 # set columns
