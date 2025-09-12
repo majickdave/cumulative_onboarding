@@ -5,7 +5,6 @@ import streamlit as st
 import datetime
 import time
 
-
 CURRENT_DATE = datetime.datetime.now().date()
 
 def display_clock():
@@ -22,20 +21,6 @@ def display_clock():
 
         # Pause for 1 second
         time.sleep(1)
-
-def get_lat_long_from_postal(postal_code):
-    """Get latitude and longitude from postal code using Nominatim."""
-    try:
-        geolocator = Nominatim(user_agent="patient_analysis_dashboard")
-        geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
-        location = geocode(f"{postal_code}, USA")
-        if location:
-            return location.latitude, location.longitude
-        else:
-            return None, None
-    except Exception as e:
-        print(f"Error geocoding postal code {postal_code}: {str(e)}")
-        return None, None
 
 def parse_date_columns(df, date_cols=None, date_format_dict=None):
     """
@@ -209,50 +194,54 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
     # instantiate figure in case there is no data
     fig = go.Figure()
 
+
     # current period line
     if curr['count'].max() > 0 and lines:
         # draw line chart current data
         fig.add_trace(go.Scatter(
             x=curr['date_created'],
             y=curr['combined_cumsum'],
+            text=curr['count'],
             line_color=curr_line_color,
             # fill='tozeroy',
             mode='lines',
             name=f'Current Period',
+            hoverlabel=dict(
+                # bgcolor= curr_line_color # Set background color for all hover labels (if not overridden by trace)
+                bordercolor=curr_line_color
+            )
             ))
         curr_markers = curr[curr['count'] > 0]
+
     # previous period line
     if prev['count'].max() > 0 and lines:
         # draw line chart previous data
         fig.add_trace(go.Scatter(
         x=prev['date_created'],
         y=prev['combined_cumsum'],
+        text=prev['count'],
         line_color='lightgrey',
         # fill='tozeroy',
         mode='lines',
-        name=f'Previous Period'
+        name=f'Previous Period',
         ))
-
-     # add the current markers   
-    if prev['count'].max() > 0 and markers:
         prev_markers = prev[prev['count'] > 0]
-            # add markers for prev data
+
+     # add the prev markers   
+    if prev['count'].max() > 0 and markers:
+        # add markers for prev data
         fig.add_trace(go.Scatter(
             x=prev_markers['date_created'],
             y=prev_markers['combined_cumsum'],
             text=prev_markers['count'],
             line_color='grey',
             mode='markers',
-            marker_symbol=105,
-            marker=dict(opacity=0.5),
+            # marker_symbol=105,
+            marker=dict(size=5),
             textposition="top right",
-            hovertemplate='<b>Previous Period Marker</b><br>' +
-                        'Date: %{x|%a, %b %d %Y}<br>' +
-                        'Cumulative Sum: %{y}<br>' +
-                        'Count: %{text}<br>' +
-                        '<extra></extra>'
         ))
-    # previous markers
+    
+    # Curr markers
     if curr['count'].max() > 0 and markers:
         curr_markers = curr[curr['count'] > 0]
         fig.add_trace(go.Scatter(
@@ -261,25 +250,39 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
             text=curr_markers['count'],
             line_color=curr_line_color,
             mode='markers',
-            marker_symbol=105,
-            marker=dict(opacity=0.5),
+            # marker_symbol=105,
+            marker=dict(size=5),
             textposition="bottom left",
-            hovertemplate='<b>Current Period Marker</b><br>' +
-                        'Date: %{x|%a, %b %d %Y}<br>' +
-                        'Cumulative Sum: %{y}<br>' +
-                        'Count: %{text}<br>' +
-                        '<extra></extra>'
-            
+            hoverlabel=dict(
+                # bgcolor= curr_line_color # Set background color for all hover labels (if not overridden by trace)
+                bordercolor=curr_line_color
+            ),   
         ))
-
 
     # title_text = f"({days} day windows) from {prev.iloc[0]["date_created"].strftime("%B %d, %Y")} to {curr.iloc[-1]["date_created"].strftime("%B %d, %Y")}"
     # subtitle_text = f"Current Max: {curr_cumsum_max}, Previous Max: {prev_cumsum_max}"
 
-    # add title
+    # add hover template
+    fig.update_traces(
+        hovertemplate='<b>%{x|%B %d}</b><br>' +
+            'Total: %{y}<br>' +
+            'Today: %{text}<br>' +
+            '<extra></extra>',
+    )
+
+    # remove tick labels
+    fig.update_xaxes(showgrid=False, tickmode='array', 
+                     tickvals=[prev['date_created'].min(), curr['date_created'].max()],
+                     ticktext=[prev['date_created'].min().strftime('%d %b %Y'), curr['date_created'].max().strftime('%d %b %Y')]
+                     ) # Hides x-axis tick labels
+    fig.update_yaxes(showgrid=False, tickmode='linear', 
+                     tick0=prev['combined_cumsum'].min(),
+                     dtick=curr['combined_cumsum'].max() // 2
+                     ) # Hides y-axis tick labels
+
+     # add title
     fig.update_layout(
-        
-        height=100,
+        height=130,
         width=200,
         showlegend=False,
         # title=dict(text=title_text,
@@ -290,14 +293,10 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
         xaxis=dict(fixedrange=True),
         yaxis=dict(fixedrange=True),
         margin=dict(
-        t=0,  # Top margin
-        b=0,
+        t=30,  # Top margin
+        b=20
         ),
     )
-    # remove grid lines
-    fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(showgrid=False)
-    
     return fig
 
 def generate_streamlit_chart(current_data, previous_data):
@@ -307,7 +306,14 @@ def generate_streamlit_chart(current_data, previous_data):
     prev = combined_data[combined_data['period'] == 'previous']
 
     fig = create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, config={'modeBarButtonsToRemove': [
+                    'zoomIn2d', 'zoomOut2d', 'zoom',
+                    'pan2d', 'select2d', 'lasso2d',
+                    'autoScale2d', 'resetScale2d',
+                    'hoverClosestCartesian', 'hoverCompareCartesian',
+                    'toImage']
+                    }
+                )
 
 @st.cache_data
 def load_data():
@@ -324,16 +330,18 @@ def load_data():
 
 # load data
 df = load_data()
-st.set_page_config(page_title=None, page_icon="📈", layout='centered', initial_sidebar_state=None, menu_items=None)
+st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='wide', 
+                   initial_sidebar_state=None, menu_items=None)
 # create a container for the header
 # create a container for the title and description
 header_container = st.container()
-header_container.header('Cumulative Onboarding Analysis')
-header_container.markdown('Compare current, previous and overall periods')
-# Newest patient
-# header_container.write(df[df['ClientId'] >= df['ClientId'].max() - 5][['ClientId', 'date_created', 'Name']])
-# set base window days
-days = header_container.number_input("Select window days", value=30, min_value=1, max_value=90)
+with header_container:
+    st.header('Cumulative Onboarding Analysis')
+    st.markdown('Compare current, previous and overall periods for the selected window')
+    # Newest patient
+    # header_container.write(df[df['ClientId'] >= df['ClientId'].max() - 5][['ClientId', 'date_created', 'Name']])
+    # set base window days
+    days = st.number_input("Select window days", value=30, min_value=1, max_value=90)
 
 st.spinner('Loading data...')
 # create window data
@@ -341,13 +349,13 @@ current_data, previous_data, previous_data2, previous_data3 = get_window_data(df
 # create a container for the metrics
 container = st.container()
 # set columns
-col1, col2, col3 = container.columns(3, border=True)
+col1, col2, col3 = container.columns(3, border=False)
 
 st.spinner('Loading data...')
 with col1:
     combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
-    st.metric(label="Current v. Last Period", 
-        value=f"{current_data['cumsum'].max()} v {previous_data['cumsum'].max()}", 
+    st.metric(label=f"last {days} days v. {days} to {days*2} days", 
+        value=f"{current_data['cumsum'].max()}", 
         delta=f"{delta_pct*100:.1f}%")
     with st.container(border=False):
         generate_streamlit_chart(current_data, previous_data)
@@ -357,8 +365,8 @@ with col1:
 
 with col2:
     combined_data, delta_pct, curr_line_color = create_combined_data(previous_data, previous_data2)
-    st.metric(label="Previous v. Last Period", 
-    value=f"{previous_data['cumsum'].max()} v {previous_data2['cumsum'].max()}", 
+    st.metric(label=f"{days} to {days*2} days v. {days*3} to {days*2} days", 
+        value=f"{previous_data['cumsum'].max()}",  
     delta=f"{delta_pct*100:.1f}%")
     with st.container(border=False):
         generate_streamlit_chart(previous_data, previous_data2)
@@ -371,9 +379,9 @@ with col3:
         days *= 2
         current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
         combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
-        st.metric(label="Overall v. Last Period", 
-        value=f"{current_data['cumsum'].max()} v {previous_data['cumsum'].max()}", 
-        delta=f"{delta_pct*100:.1f}%")
+        st.metric(label=f"last {days} days v. {days*2} to {days} days", 
+            value=f"{current_data['cumsum'].max()}",  
+            delta=f"{delta_pct*100:.1f}%")
         generate_streamlit_chart(current_data, previous_data)
     # with overall_tab:
     #     generate_streamlit_chart(current_data, previous_data, days)
