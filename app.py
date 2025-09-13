@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+import darkdetect
 import datetime
 import time
 
@@ -154,9 +155,23 @@ def get_delta_pct(current_data, previous_data):
     
     delta_pct = calc_delta()
     # set line color based on delta
+    dark_theme = darkdetect.isDark()
+    light_theme = darkdetect.isLight()
     if delta_pct < 0:
+        if light_theme: 
+            curr_line_color_light = 'rgb(255, 43, 43)'
+            curr_line_color_light_bg = 'rgba(255, 43, 43, 0.1)'
+        if dark_theme:
+            curr_line_color_dark = 'rgb(255, 75, 75)'
+            curr_line_color_dark_bg = 'rgba(255, 108, 108, 0.3)'
         curr_line_color = '#ff2b2b'
     else:
+        if light_theme:
+            curr_line_color_light = 'rgb(21, 130, 55)'
+            curr_line_color_light_bg = 'rgba(33, 195, 84, 0.1)'
+        if dark_theme:
+            curr_line_color_dark = 'rgb(255, 75, 75)'
+            curr_line_color_dark_bg = 'rgba(255, 108, 108, 0.3)'
         curr_line_color = '#2CA02C'
 
     return delta_pct, curr_line_color
@@ -351,10 +366,11 @@ st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout=
 
 header_container = st.container()
 with header_container:
-  
-    
+    # Get the current theme settings
+
     # set base window days
         # Newest patient
+    st.write(darkdetect.isDark())
     days = 180
     current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
     combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
@@ -367,7 +383,7 @@ with header_container:
 
 
 st.markdown('Compare current, previous and overall periods for the selected window')  
-days = st.number_input("Select window days", value=30, min_value=1, max_value=90)
+days = st.number_input("Select window days", value=30, min_value=1, max_value=89)
 
 st.spinner('Loading data...')
 # create window data
