@@ -159,28 +159,27 @@ def get_delta_pct(current_data, previous_data):
     light_theme = darkdetect.isLight()
     if delta_pct < 0:
         if light_theme: 
-            curr_line_color_light = 'rgb(255, 43, 43)'
-            curr_line_color_light_bg = 'rgba(255, 43, 43, 0.1)'
-        if dark_theme:
-            curr_line_color_dark = 'rgb(255, 75, 75)'
-            curr_line_color_dark_bg = 'rgba(255, 108, 108, 0.3)'
-        curr_line_color = '#ff2b2b'
+            curr_line_color = 'rgb(255, 43, 43)'
+            curr_line_color_bg = 'rgba(255, 43, 43, 0.1)'
+        elif dark_theme:
+            curr_line_color = 'rgb(255, 75, 75)'
+            curr_line_color_bg = 'rgba(255, 108, 108, 0.3)'
+        # curr_line_color = '#ff2b2b'
     else:
         if light_theme:
-            curr_line_color_light = 'rgb(21, 130, 55)'
-            curr_line_color_light_bg = 'rgba(33, 195, 84, 0.1)'
-        if dark_theme:
-            curr_line_color_dark = 'rgb(255, 75, 75)'
-            curr_line_color_dark_bg = 'rgba(255, 108, 108, 0.3)'
-        curr_line_color = '#2CA02C'
+            curr_line_color = 'rgb(21, 130, 55)'
+            curr_line_color_bg = 'rgba(33, 195, 84, 0.1)'
+        elif dark_theme:
+            curr_line_color = 'rgb(61, 213, 109)'
+            curr_line_color_bg = 'rgba(61, 213, 109, 0.3)'
+        # curr_line_color = '#2CA02C'
 
-    return delta_pct, curr_line_color
+    return delta_pct, curr_line_color, curr_line_color_bg
 
 
 def create_combined_data(current_data, previous_data):
-    # calc delta pct and set line colors
-    delta_pct, curr_line_color = get_delta_pct(current_data, previous_data)
-
+   
+    delta_pct, curr_line_color, curr_line_color_bg = get_delta_pct(current_data, previous_data)
     # --- safety: ensure we have enough rows in previous_data
     if len(previous_data) < 2:
         raise ValueError("previous_data needs at least 2 rows.")
@@ -211,10 +210,10 @@ def create_combined_data(current_data, previous_data):
     # --- compute combined cumsum
     combined_data['combined_cumsum'] = combined_data['count'].fillna(0).cumsum().astype(int)
 
-    return combined_data, delta_pct, curr_line_color
+    return combined_data, delta_pct, curr_line_color, curr_line_color_bg
 
 
-def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True):
+def create_combined_chart(curr, prev, curr_line_color, curr_line_color_bg, markers=True, lines=True):
     # instantiate figure in case there is no data
     fig = go.Figure()
     marker_size = 4
@@ -226,7 +225,7 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
             x=curr['date_created'],
             y=curr['combined_cumsum'],
             text=curr['count'],
-            line_color='rgba(214,39,40, 0.3)' if curr_line_color == '#ff2b2b' else 'rgba(44,160,44, 0.3)',
+            line_color=curr_line_color_bg,
             # fill='tozeroy',
             mode='lines',
             name=f'Current Period',
@@ -277,7 +276,7 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
             line_color=None,
             mode='markers',
             # marker_symbol=105,
-            marker=dict(size=marker_size, color='white', 
+            marker=dict(size=marker_size, color=curr_line_color_bg, 
                         line=dict(width=1,
                         color=curr_line_color,
                         )),
@@ -323,18 +322,18 @@ def create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
         yaxis=dict(fixedrange=True),
         margin=dict(
         t=30,  # Top margin
-        b=20,
+        b=10,
         ),
     )
     return fig
 
 def generate_streamlit_chart(current_data, previous_data):
     # generate first period chart
-    combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
+    combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
     curr = combined_data[combined_data['period'] == 'current']
     prev = combined_data[combined_data['period'] == 'previous']
 
-    fig = create_combined_chart(curr, prev, curr_line_color, markers=True, lines=True)
+    fig = create_combined_chart(curr, prev, curr_line_color, curr_line_color_bg, markers=True, lines=True)
     st.plotly_chart(fig, config={'modeBarButtonsToRemove': [
                     'zoomIn2d', 'zoomOut2d', 'zoom',
                     'pan2d', 'select2d', 'lasso2d',
@@ -366,24 +365,26 @@ st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout=
 
 header_container = st.container()
 with header_container:
-    # Get the current theme settings
-
-    # set base window days
-        # Newest patient
-    st.write(darkdetect.isDark())
     days = 180
     current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
-    combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
-    st.header(f"Total Onboarded this year: {combined_data['combined_cumsum'].max()}")
+    combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
+    st.header(f"Total Onboarded past year: {combined_data['combined_cumsum'].max()}")
     st.metric(label=f"Total Onboarded past {days} days", 
         value=f"{current_data['cumsum'].max()}", 
         delta=f"{delta_pct*100:.1f}%")
-    with st.container(border=False):
-        generate_streamlit_chart(current_data, previous_data)
+    # Get the current theme settings
+
+    # set base window days
+    # full year chart
+    # st.write(darkdetect.isDark())
+    # days = 180
+   
+    # with st.container(border=False):
+    #     generate_streamlit_chart(current_data, previous_data)
 
 
 st.markdown('Compare current, previous and overall periods for the selected window')  
-days = st.number_input("Select window days", value=30, min_value=1, max_value=89)
+days = st.number_input("Select window days", value=30, min_value=1, max_value=90)
 
 st.spinner('Loading data...')
 # create window data
@@ -398,7 +399,7 @@ col1, col2, col3 = container.columns(3, border=False)
 
 st.spinner('Loading data...')
 with col1:
-    combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
+    combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
     st.metric(label=f"last {days} days v. {days} to {days*2} days, Previous Total: {previous_data['cumsum'].max()}", 
         value=f"{current_data['cumsum'].max()}", 
         delta=f"{delta_pct*100:.1f}%")
@@ -409,7 +410,7 @@ with col1:
     #     generate_streamlit_chart(current_data, previous_data, days)
 
 with col2:
-    combined_data, delta_pct, curr_line_color = create_combined_data(previous_data, previous_data2)
+    combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(previous_data, previous_data2)
     st.metric(label=f"{days} to {days*2} days v. {days*2} to {days*3} days, Previous Total: {previous_data2['cumsum'].max()}", 
         value=f"{previous_data['cumsum'].max()}",  
     delta=f"{delta_pct*100:.1f}%")
@@ -423,7 +424,7 @@ with col3:
     with st.container(border=False):
         days *= 2
         current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
-        combined_data, delta_pct, curr_line_color = create_combined_data(current_data, previous_data)
+        combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
         st.metric(label=f"last {days} days v. {days} to {days*2} days, Previous Total: {previous_data['cumsum'].max()}",  
             value=f"{current_data['cumsum'].max()}",  
             delta=f"{delta_pct*100:.1f}%")
