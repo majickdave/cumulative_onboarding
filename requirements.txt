@@ -5,6 +5,7 @@ cachetools==6.2.0
 certifi==2025.8.3
 charset-normalizer==3.4.3
 click==8.2.1
+darkdetect==0.8.0
 DateTime==5.5
 gitdb==4.0.12
 GitPython==3.1.45
@@ -30,6 +31,7 @@ rpds-py==0.27.1
 setuptools==80.9.0
 six==1.17.0
 smmap==5.0.2
+st-theme==1.2.3
 streamlit==1.49.1
 tenacity==9.1.2
 toml==0.10.2
@@ -37,4 +39,5 @@ tornado==6.5.2
 typing_extensions==4.15.0
 tzdata==2025.2
 urllib3==2.5.0
+watchdog==6.0.0
 zope.interface==7.2
