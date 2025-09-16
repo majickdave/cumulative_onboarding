@@ -12,7 +12,7 @@ print(f'\nwrote columns: {cols_to_write}, \nto {path}')
 
 # 2. Appointments: takes appointments.csv and creates a table of appointments
 df = pd.read_csv('data/appointments.csv', encoding='latin1')
-cols_to_write = ['Date', 'Status', 'CancellationDate', 'PaidAmount']
+cols_to_write = ['Date', 'Status', 'CancellationDate', 'Price']
 path = 'data/appt_dates.csv'
 df[cols_to_write].to_csv(path, encoding='utf-8', index=False)
 print(f'\nwrote columns: {cols_to_write}, \nto {path}')

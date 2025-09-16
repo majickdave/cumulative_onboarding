@@ -268,27 +268,3 @@ clients = fetch_all_clients(date_created_start=None, date_created_end=None)
 pd.DataFrame(clients).to_csv(path)
 print(f'\ndownloaded data to {path}')
 
-
-# process and deidentify data for dashboard
-# 1. Client Onboarding: takes clients.csv and creates a list of dates
-df = pd.read_csv('data/clients_test.csv', encoding='latin1')
-cols_to_write = ['DateCreated']
-path = 'data/dates_test.csv'
-df[cols_to_write].to_csv(path, encoding='utf-8', index=False)
-print(f'\nwrote columns: {cols_to_write}, \nto {path}')
-
-# 2. Appointments: takes appointments.csv and creates a table of appointments
-df = pd.read_csv('data/appointments_test.csv', encoding='latin1')
-cols_to_write = ['DateCreated', 'Status', 'CancellationDate', 'Price']
-path = 'data/appt_dates_test.csv'
-df[cols_to_write].to_csv(path, encoding='utf-8', index=False)
-print(f'\nwrote columns: {cols_to_write}, \nto {path}')
-
-# 3. Client Summary: takes client_summary.csv and creates a table of clients
-df = pd.read_csv('data/client_summary.csv')
-cols_to_write = ['FirstAppointmentDate', 'LastAppointmentDate', 
-                 'TotalAppointments', 'TotalPaidAmount', 'ClientStatus']
-path = 'data/client_summary_totals_test.csv'
-df[cols_to_write].to_csv(path, encoding='utf-8', index=False)
-print(f'\nwrote columns: {cols_to_write}, \nto {path}')
-

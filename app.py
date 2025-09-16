@@ -423,8 +423,8 @@ appts_this_year = appts[appts['Date'] >= now - pd.Timedelta(days=days)]
 appts_last_year = appts[(appts['Date'] >= now - pd.Timedelta(days=days*2)) & (appts['Date'] < now - pd.Timedelta(days=days))]
 delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
-total_paid_this_year = appts_this_year['PaidAmount'].sum()
-total_paid_last_year = appts_last_year['PaidAmount'].sum()
+total_paid_this_year = appts_this_year['Price'].sum()
+total_paid_last_year = appts_last_year['Price'].sum()
 delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
 
 with st.container():

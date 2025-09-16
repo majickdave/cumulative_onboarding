@@ -361,7 +361,7 @@ def generate_streamlit_chart(current_data, previous_data, show_markers):
 @st.cache_data
 def load_data():
     
-    file_path = 'data/dates.csv'
+    file_path = 'data/dates_test.csv'
     # load data
     df = pd.read_csv(file_path, encoding='utf-8')
 
@@ -403,9 +403,9 @@ client_summary_totals = pd.read_csv('data/client_summary_totals.csv')
 client_summary_totals['TotalAppointments'] = client_summary_totals['TotalAppointments'].astype(int)
 client_summary_totals['TotalPaidAmount'] = client_summary_totals['TotalPaidAmount'].astype(float)
 
-appts = pd.read_csv('data/appt_dates.csv')
+appts = pd.read_csv('data/appt_dates_test.csv')
 # convert datetime
-appts['Date'] = pd.to_datetime(appts['Date'])
+appts['Date'] = pd.to_datetime(appts['DateCreated'])
 
 now = datetime.datetime.now()
 
@@ -423,8 +423,8 @@ appts_this_year = appts[appts['Date'] >= now - pd.Timedelta(days=days)]
 appts_last_year = appts[(appts['Date'] >= now - pd.Timedelta(days=days*2)) & (appts['Date'] < now - pd.Timedelta(days=days))]
 delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
-total_paid_this_year = appts_this_year['PaidAmount'].sum()
-total_paid_last_year = appts_last_year['PaidAmount'].sum()
+total_paid_this_year = appts_this_year['Price'].sum()
+total_paid_last_year = appts_last_year['Price'].sum()
 delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
 
 with st.container():
