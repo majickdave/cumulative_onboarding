@@ -57,6 +57,7 @@ def refresh_data_in_app(api_key):
                 return new_appts
             else:
                 print("No new appointments found.")
+                return None
 
 
     def fetch_clients_created_between(start_date, end_date):
@@ -108,9 +109,9 @@ def refresh_data_in_app(api_key):
                 return new_clients
             else:
                 print("No new clients found.")
+                return None
 
-
-    new_appointments = update_appointments_data()
     new_clients = update_clients_data()
-
+    new_appointments = update_appointments_data()
+    
     return new_clients, new_appointments

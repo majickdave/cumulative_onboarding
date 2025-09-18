@@ -365,21 +365,25 @@ def load_data():
     
     with st.spinner("Refreshing data..."):
         new_clients, new_appointments = refresh_data_in_app(API_KEY)
+        st.write("no new clients:", new_clients is None, "no new appointments:", new_appointments is None)
     with st.spinner("Running data pipeline..."):
-        run_data_pipeline(new_clients, new_appointments)
-
+        if new_clients is not None and new_appointments is not None:
+            run_data_pipeline(new_clients, new_appointments)
+    
     # load data
-    file_path = 'data/dates.csv'
-    df = pd.read_csv(file_path, encoding='utf-8')
-    df = df.rename(columns={'DateCreated': 'date_created'})
+    clients = pd.read_csv('data/dates.csv', encoding='utf-8')
+    clients = clients.rename(columns={'DateCreated': 'date_created'})
     # parse date columns
-    df = parse_date_columns(df)
+    clients = parse_date_columns(clients)
 
-    appts = pd.read_csv('data/appt_dates.csv')
+    appts = pd.read_csv('data/appt_dates.csv', encoding='utf-8')
     # convert datetime
     appts['Date'] = pd.to_datetime(appts['Date'])
+    appts['CancellationDate'] = pd.to_datetime(appts['CancellationDate'], errors='coerce')
 
-    return df, appts
+    st.write("latest appointment date:", appts['Date'].max().date())
+    st.write("latest onboarding date:", clients['date_created'].max().date())
+    return clients, appts
 
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
