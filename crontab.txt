@@ -1,1 +1,1 @@
-1 0 * * * /Users/davidsamuel/Desktop/mindtree_repo/cumulative_onboarding/.venv/bin/python /Users/davidsamuel/Desktop/mindtree_repo/cumulative_onboarding/data_pipeline_test.py >> /logs/logfile.log 2>&1
+* * * * * flock -w 0 /tmp/myjob.lock /Users/davidsamuel/Desktop/mindtree_repo/cumulative_onboarding/run_scripts.sh

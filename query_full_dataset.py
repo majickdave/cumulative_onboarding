@@ -258,12 +258,12 @@ def fetch_all_clients(api_url=BASE + "clients", include_profile=True, search=Non
 # get appointments
 appts = fetch_all_appointments(include_profile=True, search=None, date_start=None, 
                           date_end=None)
-path = 'data/appointments_test.csv'
+path = '/Users/davidsamuel/Projects/cumulative_onboarding/data/appointments.csv'
 pd.DataFrame(appts).to_csv(path, index=False)
 print(f'\ndownloaded data to {path}')
 
 # get clients
-path = 'data/clients_test.csv'
+path = '/Users/davidsamuel/Projects/cumulative_onboarding/data/clients.csv'
 clients = fetch_all_clients(date_created_start=None, date_created_end=None)
 pd.DataFrame(clients).to_csv(path)
 print(f'\ndownloaded data to {path}')

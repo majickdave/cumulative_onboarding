@@ -2,13 +2,15 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
-import darkdetect
 import datetime
 import time
 from millify import millify
 from PIL import Image
+from refresh_data_in_app import refresh_data_in_app
+from data_pipeline import run_data_pipeline
 
 CURRENT_DATE = datetime.datetime.now().date()
+API_KEY = st.secrets["INTAKEQ_API_KEY"]
 
 def display_clock():
     # Create a placeholder for the clock
@@ -157,8 +159,8 @@ def get_delta_pct(current_data, previous_data):
     delta_pct = calc_delta(curr_cumsum_max, prev_cumsum_max)
 
     # set line color based on delta
-    dark_theme = darkdetect.isDark()
-    light_theme = darkdetect.isLight()
+    # dark_theme = darkdetect.isDark()
+    # light_theme = darkdetect.isLight()
 
     # red for negative delta
     if delta_pct < 0:
@@ -361,15 +363,23 @@ def generate_streamlit_chart(current_data, previous_data, show_markers):
 @st.cache_data
 def load_data():
     
-    file_path = 'data/dates.csv'
-    # load data
-    df = pd.read_csv(file_path, encoding='utf-8')
+    with st.spinner("Refreshing data..."):
+        new_clients, new_appointments = refresh_data_in_app(API_KEY)
+    with st.spinner("Running data pipeline..."):
+        run_data_pipeline(new_clients, new_appointments)
 
+    # load data
+    file_path = 'data/dates.csv'
+    df = pd.read_csv(file_path, encoding='utf-8')
     df = df.rename(columns={'DateCreated': 'date_created'})
     # parse date columns
     df = parse_date_columns(df)
 
-    return df
+    appts = pd.read_csv('data/appt_dates.csv')
+    # convert datetime
+    appts['Date'] = pd.to_datetime(appts['Date'])
+
+    return df, appts
 
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
@@ -383,7 +393,6 @@ try:
     hero_image = Image.open("public/images/hero.jpg") # Replace with your image path
 except FileNotFoundError:
     st.error("Hero image not found. Please ensure 'your_hero_image.jpg' is in the same directory.")
-    st.stop()
 
 with st.sidebar:
     # Display the hero image
@@ -394,20 +403,13 @@ with st.sidebar:
     st.write("Select a desired window to view topline metrics")
     days = st.number_input("Select window", value=30, min_value=1, max_value=730)
 
+# client summary data TODO: use this data in the dashboard
+# client_summary_totals = pd.read_csv('data/client_summary_totals.csv')
+# client_summary_totals['TotalAppointments'] = client_summary_totals['TotalAppointments'].astype(int)
+# client_summary_totals['TotalPaidAmount'] = client_summary_totals['TotalPaidAmount'].astype(float)
+
 # load data
-df = load_data()
-
-# create a container for the header
-# create a container for the title and description
-client_summary_totals = pd.read_csv('data/client_summary_totals.csv')
-client_summary_totals['TotalAppointments'] = client_summary_totals['TotalAppointments'].astype(int)
-client_summary_totals['TotalPaidAmount'] = client_summary_totals['TotalPaidAmount'].astype(float)
-
-appts = pd.read_csv('data/appt_dates.csv')
-# convert datetime
-appts['Date'] = pd.to_datetime(appts['Date'])
-
-now = datetime.datetime.now()
+df, appts = load_data()
 
 st.header('Onboarding Analysis')
 
@@ -417,6 +419,7 @@ if days < 30:
 else:
     show_markers = False
 
+now = datetime.datetime.now()
 # filter data to no cancelled appts in the last year
 appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
 appts_this_year = appts[appts['Date'] >= now - pd.Timedelta(days=days)]
