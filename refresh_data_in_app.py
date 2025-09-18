@@ -1,10 +1,12 @@
 import pandas as pd
-from datetime import datetime
+import datetime
 import requests
+from zoneinfo import ZoneInfo
 
 def refresh_data_in_app(api_key):
     API_KEY = api_key
     BASE = "https://intakeq.com/api/v1/"
+    now = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
 
     def fetch_appointments_scheduled_between(start_date, end_date):
         """
@@ -35,12 +37,13 @@ def refresh_data_in_app(api_key):
         if 'Date' not in df.columns:
             df.rename(columns={'DateCreated':'Date'}, inplace=True)
         last_updated = pd.to_datetime(df['Date']).sort_values().max()
-        if last_updated.date() == datetime.now().date():
+        
+        if last_updated.date() == now:
             print("Appointment data is already up to date.")
         else:
             # create start date from most recent appointment DateCreated
             start_date = (last_updated - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
-            end_date = datetime.now().date().strftime('%Y-%m-%d')
+            end_date = now.strftime('%Y-%m-%d')
 
             print(f"Fetching appointments updated since {start_date} to {end_date}")
             response = fetch_appointments_scheduled_between(start_date, end_date)
@@ -87,12 +90,12 @@ def refresh_data_in_app(api_key):
         df = pd.read_csv('data/dates.csv')
         # check most recent date created
         last_updated = pd.to_datetime(df['DateCreated']).sort_values().max()
-        if last_updated.date() == datetime.now().date():
+        if last_updated.date() == now:
             print("Client data is already up to date.")
         else:
             # create start date from most recent appointment DateCreated
             start_date = (pd.to_datetime(df['DateCreated']).sort_values().max() - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
-            end_date = datetime.now().date().strftime('%Y-%m-%d')
+            end_date = now.strftime('%Y-%m-%d')
 
             print(f"Fetching clients created between {start_date} and {end_date}")
             response = fetch_clients_created_between(start_date, end_date)

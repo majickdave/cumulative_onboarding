@@ -3,13 +3,14 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 import datetime
+from zoneinfo import ZoneInfo
 import time
 from millify import millify
 from PIL import Image
 from refresh_data_in_app import refresh_data_in_app
 from data_pipeline import run_data_pipeline
 
-CURRENT_DATE = datetime.datetime.now().date()
+CURRENT_DATE = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
 API_KEY = st.secrets["INTAKEQ_API_KEY"]
 
 def display_clock():
@@ -365,7 +366,8 @@ def load_data():
     
     with st.spinner("Refreshing data..."):
         new_clients, new_appointments = refresh_data_in_app(API_KEY)
-        st.write("no new clients:", new_clients is None, "no new appointments:", new_appointments is None)
+        st.sidebar.write("new clients:", new_clients is not None)
+        st.sidebar.write("new appointments:", new_appointments is not None)
     with st.spinner("Running data pipeline..."):
         if new_clients is not None and new_appointments is not None:
             run_data_pipeline(new_clients, new_appointments)
@@ -381,8 +383,8 @@ def load_data():
     appts['Date'] = pd.to_datetime(appts['Date'])
     appts['CancellationDate'] = pd.to_datetime(appts['CancellationDate'], errors='coerce')
 
-    st.write("latest appointment date:", appts['Date'].max().date())
-    st.write("latest onboarding date:", clients['date_created'].max().date())
+    st.sidebar.write("latest appointment date:", appts['Date'].max().date())
+    st.sidebar.write("latest onboarding date:", clients['date_created'].max().date())
     return clients, appts
 
 # ************************************************************************************
@@ -423,11 +425,13 @@ if days < 30:
 else:
     show_markers = False
 
-now = datetime.datetime.now()
+now = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
+
+
 # filter data to no cancelled appts in the last year
 appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
-appts_this_year = appts[appts['Date'] >= now - pd.Timedelta(days=days)]
-appts_last_year = appts[(appts['Date'] >= now - pd.Timedelta(days=days*2)) & (appts['Date'] < now - pd.Timedelta(days=days))]
+appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
+appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
 delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
 total_paid_this_year = appts_this_year['Price'].sum()
