@@ -32,7 +32,9 @@ def refresh_data_in_app(api_key):
         # load existing data
         df = pd.read_csv('data/appts_dates.csv')
         #last updated
-        last_updated = pd.to_datetime(df['DateCreated'], unit='ms').sort_values().max()
+        if 'Date' not in df.columns:
+            df.rename(columns={'DateCreated':'Date'}, inplace=True)
+        last_updated = pd.to_datetime(df['Date'], unit='ms').sort_values().max()
         if last_updated.date() == datetime.now().date():
             print("Appointment data is already up to date.")
         else:
