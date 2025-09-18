@@ -30,7 +30,7 @@ def refresh_data_in_app(api_key):
 
     def update_appointments_data():
         # load existing data
-        df = pd.read_csv('data/appointments.csv')
+        df = pd.read_csv('data/appts_dates.csv')
         #last updated
         last_updated = pd.to_datetime(df['DateCreated'], unit='ms').sort_values().max()
         if last_updated.date() == datetime.now().date():
@@ -50,7 +50,7 @@ def refresh_data_in_app(api_key):
 
                 # Concatenate
                 new_appts = pd.concat([df, new_unique], ignore_index=True)
-                new_appts.to_csv('data/appointments.csv', index=False)
+
                 print("Appointments data updated.")
                 return new_appts
             else:
@@ -81,7 +81,7 @@ def refresh_data_in_app(api_key):
 
     def update_clients_data():
         # load existing data
-        df = pd.read_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/clients.csv')
+        df = pd.read_csv('data/dates.csv')
         # check most recent date created
         last_updated = pd.to_datetime(df['DateCreated'], unit='ms').sort_values().max()
         if last_updated.date() == datetime.now().date():
