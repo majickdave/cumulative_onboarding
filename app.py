@@ -365,12 +365,12 @@ def generate_streamlit_chart(current_data, previous_data, show_markers):
 def load_data():
     
     with st.spinner("Refreshing data..."):
-        new_clients, new_appointments = refresh_data_in_app(API_KEY)
-        st.sidebar.write("new clients:", new_clients is not None)
-        st.sidebar.write("new appointments:", new_appointments is not None)
+        clients, appts = refresh_data_in_app(API_KEY)
+        st.sidebar.write("new clients:", clients is not None)
+        st.sidebar.write("new appointments:", appts is not None)
     with st.spinner("Running data pipeline..."):
-        if new_clients is not None and new_appointments is not None:
-            run_data_pipeline(new_clients, new_appointments)
+        if clients is not None and appts is not None:
+            run_data_pipeline(clients, appts)
     
     # load data
     clients = pd.read_csv('data/dates.csv', encoding='utf-8')
