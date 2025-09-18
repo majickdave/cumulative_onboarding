@@ -30,11 +30,11 @@ def refresh_data_in_app(api_key):
 
     def update_appointments_data():
         # load existing data
-        df = pd.read_csv('data/appts_dates.csv')
+        df = pd.read_csv('data/appt_dates.csv')
         #last updated
         if 'Date' not in df.columns:
             df.rename(columns={'DateCreated':'Date'}, inplace=True)
-        last_updated = pd.to_datetime(df['Date'], unit='ms').sort_values().max()
+        last_updated = pd.to_datetime(df['Date']).sort_values().max()
         if last_updated.date() == datetime.now().date():
             print("Appointment data is already up to date.")
         else:
@@ -85,12 +85,12 @@ def refresh_data_in_app(api_key):
         # load existing data
         df = pd.read_csv('data/dates.csv')
         # check most recent date created
-        last_updated = pd.to_datetime(df['DateCreated'], unit='ms').sort_values().max()
+        last_updated = pd.to_datetime(df['DateCreated']).sort_values().max()
         if last_updated.date() == datetime.now().date():
             print("Client data is already up to date.")
         else:
             # create start date from most recent appointment DateCreated
-            start_date = (pd.to_datetime(df['DateCreated'], unit='ms').sort_values().max() - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+            start_date = (pd.to_datetime(df['DateCreated']).sort_values().max() - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
             end_date = datetime.now().date().strftime('%Y-%m-%d')
 
             print(f"Fetching clients created between {start_date} and {end_date}")
