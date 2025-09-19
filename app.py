@@ -185,7 +185,7 @@ def get_delta_pct(current_data, previous_data):
 
     return delta_pct, curr_line_color, curr_line_color_bg
 
-
+st.cache_data()
 def create_combined_data(current_data, previous_data):
    
     delta_pct, curr_line_color, curr_line_color_bg = get_delta_pct(current_data, previous_data)
