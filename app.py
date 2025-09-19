@@ -407,7 +407,7 @@ with st.sidebar:
     message_placeholder = st.empty()
     if "button_timestamp" not in st.session_state:
         st.session_state['button_timestamp'] = None
-    if st.button("Refresh Data", on_click=load_data, args=(True,)):
+    if st.button("Refresh Data", icon='🔄', on_click=load_data, args=(True,)):
         st.session_state['button_timestamp'] = datetime.datetime.now(ZoneInfo("America/Los_Angeles"))
         # Show success message
     # Show and auto-clear message for 5 seconds
@@ -419,7 +419,7 @@ with st.sidebar:
 
     # Show cached timestamp
     if st.session_state['button_timestamp']:
-        st.write(f"last: {st.session_state['button_timestamp'].strftime('%b %d %I:%M %p')}")
+        st.write(f"{st.session_state['button_timestamp'].strftime('%b %d %I:%M %p')}")
 
 
     
