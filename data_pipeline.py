@@ -8,22 +8,23 @@ def run_data_pipeline(clients, appointments):
     """
     A data pipeline to process client and appointment data."""
     # 1. Client Onboarding: takes clients.csv and creates a list of dates
-    if clients:
+    if not clients.empty:
         df = clients.copy()
 
-        cols_to_write = ['DateCreated']
+        cols_to_write = ['ClientId', 'DateCreated']
         if df['DateCreated'].dtype == float:
             df['DateCreated'] = pd.to_datetime(df['DateCreated'], unit="ms").dt.strftime("%m/%d/%Y")
         path = 'data/dates.csv'
         df[cols_to_write].to_csv(path, encoding='utf-8', index=False)
+        print(f'\nwrote columns: {cols_to_write}, \nto {path}')
 
-    if appointments:
+    if not appointments.empty:
         # 2. Appointments: takes appointments.csv and creates a table of appointments
         df = appointments.copy()
 
         if 'Date' not in df.columns:
             df.rename(columns={'DateCreated': 'Date'}, inplace=True)
-        cols_to_write = ['Date', 'Status', 'CancellationDate', 'Price']
+        cols_to_write = ['Id', 'Date', 'Status', 'CancellationDate', 'Price']
         if df['Date'].dtype == float:
             df['Date'] = pd.to_datetime(df['Date'], unit="ms").dt.strftime("%Y-%m-%d %H:%M")
         if df['CancellationDate'].dtype == float:
@@ -44,5 +45,7 @@ def run_data_pipeline(clients, appointments):
         #     print(f'\nwrote columns: {cols_to_write}, \nto {path}')
 
 if __name__ == "__main__":
-    run_data_pipeline()
+    clients = pd.read_csv('data/clients.csv', encoding='latin1')
+    appts = pd.read_csv('data/appointments.csv', encoding='latin1')
+    run_data_pipeline(clients, appts)
 
