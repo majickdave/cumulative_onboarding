@@ -8,7 +8,7 @@ import time
 from millify import millify
 from PIL import Image
 from refresh_data_in_app import refresh_data_in_app
-from data_pipeline import run_data_pipeline
+from run_data_pipeline import run_data_pipeline
 
 CURRENT_DATE = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
 API_KEY = st.secrets["INTAKEQ_API_KEY"]
@@ -341,15 +341,15 @@ def generate_streamlit_chart(current_data, previous_data, show_markers):
     prev = combined_data[combined_data['period'] == 'previous']
 
     fig = create_combined_chart(curr, prev, curr_line_color, curr_line_color_bg, show_markers, lines=True)
-    with st.expander("Previous Total", icon='↩️', expanded=True):
-        st.plotly_chart(fig, height=200, config={'modeBarButtonsToRemove': [
-                    'zoomIn2d', 'zoomOut2d', 'zoom',
-                    'pan2d', 'select2d', 'lasso2d',
-                    'autoScale2d', 'resetScale2d',
-                    'hoverClosestCartesian', 'hoverCompareCartesian',
-                    'toImage']
-                    }
-                )
+    # with st.expander("Previous Total", icon='↩️', expanded=True):
+    st.plotly_chart(fig, height=200, config={'modeBarButtonsToRemove': [
+                'zoomIn2d', 'zoomOut2d', 'zoom',
+                'pan2d', 'select2d', 'lasso2d',
+                'autoScale2d', 'resetScale2d',
+                'hoverClosestCartesian', 'hoverCompareCartesian',
+                'toImage']
+                }
+            )
     
     # with st.expander("combined chart", icon='📉'):
     #     line_chart = st.line_chart(prev,
@@ -362,28 +362,27 @@ def generate_streamlit_chart(current_data, previous_data, show_markers):
     #     line_chart.add_rows(curr)
 
 @st.cache_data
-def load_data(run_live=True):
-    
+def load_data(run_live=False):
+    clients, appts = None, None
     with st.spinner("Refreshing data..."):
-        clients, appts = refresh_data_in_app(API_KEY)
+        if run_live:
+            clients, appts = refresh_data_in_app(API_KEY)
     with st.spinner("Running data pipeline..."):
-        if clients is not None and appts is not None:
-            if run_live:
+        if run_live:
                 clients, appts = run_data_pipeline(clients, appts)
-            else:   
-                # load data
-                clients = pd.read_csv('data/dates.csv', encoding='utf-8')
-                appts = pd.read_csv('data/appt_dates.csv', encoding='utf-8')
-            
-            clients = clients.rename(columns={'DateCreated': 'date_created'})
-            # parse date columns
-            clients = parse_date_columns(clients)
-            # convert datetime
-            appts['Date'] = pd.to_datetime(appts['Date'])
-            appts['CancellationDate'] = pd.to_datetime(appts['CancellationDate'], errors='coerce')
-            st.sidebar.write("latest appointment date:", appts['Date'].max().date())
-            st.sidebar.write("latest onboarding date:", clients['date_created'].max().date())
-            return clients, appts
+        else:   
+            # load data
+            clients = pd.read_csv('data/dates.csv', encoding='utf-8')
+            appts = pd.read_csv('data/appt_dates.csv', encoding='utf-8')
+        
+        clients = clients.rename(columns={'DateCreated': 'date_created'})
+        # parse date columns
+        clients = parse_date_columns(clients)
+        # convert datetime
+        appts['Date'] = pd.to_datetime(appts['Date'])
+        appts['CancellationDate'] = pd.to_datetime(appts['CancellationDate'], errors='coerce')
+
+        return clients, appts
 
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
@@ -391,7 +390,7 @@ def load_data(run_live=True):
 
 # set page config
 st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='centered')
-
+YTD_days = ( datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date() - datetime.datetime(datetime.datetime.now(ZoneInfo("America/Los_Angeles")).year, 1, 1).date() ).days
 # Load your hero image
 try:
     hero_image = Image.open("public/images/hero.jpg") # Replace with your image path
@@ -399,14 +398,48 @@ except FileNotFoundError:
     st.error("Hero image not found. Please ensure 'your_hero_image.jpg' is in the same directory.")
 
 with st.sidebar:
-    # Display the hero image
-    st.image(hero_image, width='stretch')
-
     # Add a title and description
     st.title("Client Dashboard")
+    # Display the hero image
+    st.image(hero_image, width='stretch')
+    # create a button to refresh data
+    # Placeholder for success message
+    message_placeholder = st.empty()
+    if "button_timestamp" not in st.session_state:
+        st.session_state['button_timestamp'] = None
+    if st.button("Refresh Data", on_click=load_data, args=(True,)):
+        st.session_state['button_timestamp'] = datetime.datetime.now()
+        # Show success message
+    # Show and auto-clear message for 5 seconds
+    if st.session_state['button_timestamp']:
+        if datetime.datetime.now() - st.session_state['button_timestamp'] < datetime.timedelta(seconds=5):
+            message_placeholder.success("Data refreshed!", icon="✅")
+        else:
+            message_placeholder.empty()
+
+    # Show cached timestamp
+    if st.session_state['button_timestamp']:
+        st.write(f"last: {st.session_state['button_timestamp'].strftime('%b %d %-I:%-M %p')}")
+
+
     
-    days = st.select_slider("Select window (days)", value=30, options=[1, 7, 10, 14, 21, 30, 45, 60, 75, 90, 180, 365])
-    # days = st.select_slider("Select window", value=30, min_value=1, max_value=730)
+    options = [1, 7, 30, 90, YTD_days, 365]
+    labels = {
+        1: "1D",
+        7: "1W",
+        # 10: "10D",
+        # 14: "2W",
+        # 21: "3W",
+        30: "1M",
+        # 45: "6W",
+        # 60: "2M",
+        # 75: "10W",
+        90: "3M",
+        # 180: "6M",
+        YTD_days: "YTD",
+        365: "1Y",
+    }
+
 
 # client summary data TODO: use this data in the dashboard
 # client_summary_totals = pd.read_csv('data/client_summary_totals.csv')
@@ -414,10 +447,16 @@ with st.sidebar:
 # client_summary_totals['TotalPaidAmount'] = client_summary_totals['TotalPaidAmount'].astype(float)
 
 # load data
-df, appts = load_data()
+df, appts = load_data(run_live=False)
 
 st.header('Onboarding Analysis')
-
+days = st.pills(
+    "filter data",
+    label_visibility='collapsed',
+    options=options,
+    default=30,
+    format_func=lambda x: labels[x]
+)
 # set limits for markers
 if days < 30:
     show_markers = True
@@ -433,26 +472,38 @@ appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
 appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
 delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
-new_appts = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
-follow_up_appts = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+new_appts_this_year = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+new_appts_last_year = appts_last_year[~(appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
+follow_up_appts_this_year = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+follow_up_appts_last_year = appts_last_year[appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
 
 total_paid_this_year = appts_this_year['Price'].sum()
 total_paid_last_year = appts_last_year['Price'].sum()
 delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
 
-with st.container():
-    header_col1, header_col2, header_col3 = st.columns(3)
+metric_label = f'{days} days'
+if days == 1:
+    metric_label = '24 hours'
+elif days == YTD_days:
+    metric_label = 'YTD'
+else:
+    metric_label = labels[days]
+
+with st.container(horizontal_alignment="left"):
+    header_col1, header_col2, header_col3 = st.columns([1,1,1])
 
     with header_col1:
-        st.metric(value=f"{millify(len(new_appts), precision=2)}", label=f"New appointments last {days} days", 
-                    delta=f"{delta_appts_pct*100:.1f}%")
+        st.metric(value=f"{millify(len(new_appts_this_year), precision=2)}", label=f"New appointments", 
+                    delta=f"{delta_new_appts_pct*100:.1f}%")
     
     with header_col2:
-        st.metric(value=f"{millify(len(follow_up_appts), precision=2)}", label=f"Follow-up appointments last {days} days", 
-                    delta=f"{delta_appts_pct*100:.1f}%")
+        st.metric(value=f"{millify(len(follow_up_appts_this_year), precision=2)}", label=f"Follow-ups", 
+                    delta=f"{delta_follow_up_appts_pct*100:.1f}%")
     
     with header_col3:
-        st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue last {days} days",
+        st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue",
                     delta=f"{delta_paid_pct*100:.1f}%")
 
 # create a container for the metrics
@@ -466,7 +517,7 @@ with st.container(vertical_alignment="center"):
 
     with col1:
         combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
-        st.metric(label=f"Onboarded last {days} days", 
+        st.metric(label=f"Onboarded {metric_label}", 
             value=f"{current_data['cumsum'].max()}", 
             delta=f"{delta_pct*100:.1f}%")
         with st.container(border=False):
@@ -474,7 +525,7 @@ with st.container(vertical_alignment="center"):
         
     with col2:
         combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(previous_data, previous_data2)
-        st.metric(label=f"Onboarded previous {days} days", 
+        st.metric(label=f"Onboarded previous {metric_label}", 
             value=f"{previous_data['cumsum'].max()}",  
         delta=f"{delta_pct*100:.1f}%")
         with st.container(border=False):

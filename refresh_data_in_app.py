@@ -100,7 +100,6 @@ def refresh_data_in_app(api_key):
             print(f"Fetching clients created between {start_date} and {end_date}")
             response = fetch_clients_created_between(start_date, end_date)
             new_data = pd.DataFrame(response)
-            print(new_data.columns)
             if not new_data.empty:
                 # Keep only rows in new_data whose 'ClientId' is not already in df
                 new_unique = new_data[~new_data['ClientId'].isin(df['ClientId'])]
