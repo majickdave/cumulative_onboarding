@@ -387,9 +387,18 @@ def load_data(run_live=False):
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
 # ************************************************************************************
-
+st.markdown(
+    """
+    <style>
+    section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"] {
+        max-width: 1800px; # Adjust this value as needed
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 # set page config
-st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='centered')
+st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='wide')
 YTD_days = ( datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date() - datetime.datetime(datetime.datetime.now(ZoneInfo("America/Los_Angeles")).year, 1, 1).date() ).days
 # Load your hero image
 try:
@@ -447,7 +456,8 @@ with st.sidebar:
 # client_summary_totals['TotalPaidAmount'] = client_summary_totals['TotalPaidAmount'].astype(float)
 
 # load data
-df, appts = load_data(run_live=False)
+with st.spinner("Loading data...", show_time=True):
+    df, appts = load_data(run_live=False)
 
 st.header('Onboarding Analysis')
 days = st.pills(
@@ -467,21 +477,22 @@ now = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
 
 
 # filter data to no cancelled appts in the last year
-appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
-appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
-appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
-delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
+with st.spinner("Calculating metrics..."):
+    appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
+    appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
+    appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
+    delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
-new_appts_this_year = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
-new_appts_last_year = appts_last_year[~(appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
-delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
-follow_up_appts_this_year = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
-follow_up_appts_last_year = appts_last_year[appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
-delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
+    new_appts_this_year = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+    new_appts_last_year = appts_last_year[~(appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+    delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
+    follow_up_appts_this_year = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+    follow_up_appts_last_year = appts_last_year[appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+    delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
 
-total_paid_this_year = appts_this_year['Price'].sum()
-total_paid_last_year = appts_last_year['Price'].sum()
-delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
+    total_paid_this_year = appts_this_year['Price'].sum()
+    total_paid_last_year = appts_last_year['Price'].sum()
+    delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
 
 metric_label = f'{days} days'
 if days == 1:
