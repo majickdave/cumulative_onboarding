@@ -316,7 +316,7 @@ def create_combined_chart(curr, prev, curr_line_color, curr_line_color_bg, marke
 
      # add title
     fig.update_layout(
-        title=dict(text=str(prev['cumsum'].max())),
+        # title=dict(text=str(prev['cumsum'].max())),
         height=200,
         width=200,
         showlegend=False,
@@ -501,8 +501,8 @@ elif days == YTD_days:
 else:
     metric_label = labels[days]
 
-with st.container(horizontal_alignment="left"):
-    header_col1, header_col2, header_col3 = st.columns([1,1,1])
+with st.container(horizontal_alignment="center"):
+    header_col1, header_col2, header_col3 = st.columns([1,1,1], vertical_alignment="center")
 
     with header_col1:
         st.metric(value=f"{millify(len(new_appts_this_year), precision=2)}", label=f"New appointments", 
