@@ -311,7 +311,7 @@ def create_combined_chart(curr, prev, curr_line_color, curr_line_color_bg, marke
     )
 
     # remove tick labels
-    fig.update_xaxes(showgrid=False, tickangle=325,)
+    fig.update_xaxes(showgrid=False, tickangle=325, tickformat="%b %d, %Y")
     fig.update_yaxes(showgrid=False) # Hides y-axis tick labels
 
      # add title
@@ -362,30 +362,28 @@ def generate_streamlit_chart(current_data, previous_data, show_markers):
     #     line_chart.add_rows(curr)
 
 @st.cache_data
-def load_data():
+def load_data(run_live=True):
     
     with st.spinner("Refreshing data..."):
         clients, appts = refresh_data_in_app(API_KEY)
-        st.sidebar.write("new clients:", clients is not None)
-        st.sidebar.write("new appointments:", appts is not None)
     with st.spinner("Running data pipeline..."):
         if clients is not None and appts is not None:
-            run_data_pipeline(clients, appts)
-    
-    # load data
-    clients = pd.read_csv('data/dates.csv', encoding='utf-8')
-    clients = clients.rename(columns={'DateCreated': 'date_created'})
-    # parse date columns
-    clients = parse_date_columns(clients)
-
-    appts = pd.read_csv('data/appt_dates.csv', encoding='utf-8')
-    # convert datetime
-    appts['Date'] = pd.to_datetime(appts['Date'])
-    appts['CancellationDate'] = pd.to_datetime(appts['CancellationDate'], errors='coerce')
-
-    st.sidebar.write("latest appointment date:", appts['Date'].max().date())
-    st.sidebar.write("latest onboarding date:", clients['date_created'].max().date())
-    return clients, appts
+            if run_live:
+                clients, appts = run_data_pipeline(clients, appts)
+            else:   
+                # load data
+                clients = pd.read_csv('data/dates.csv', encoding='utf-8')
+                appts = pd.read_csv('data/appt_dates.csv', encoding='utf-8')
+            
+            clients = clients.rename(columns={'DateCreated': 'date_created'})
+            # parse date columns
+            clients = parse_date_columns(clients)
+            # convert datetime
+            appts['Date'] = pd.to_datetime(appts['Date'])
+            appts['CancellationDate'] = pd.to_datetime(appts['CancellationDate'], errors='coerce')
+            st.sidebar.write("latest appointment date:", appts['Date'].max().date())
+            st.sidebar.write("latest onboarding date:", clients['date_created'].max().date())
+            return clients, appts
 
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
@@ -406,8 +404,9 @@ with st.sidebar:
 
     # Add a title and description
     st.title("Client Dashboard")
-    st.write("Select a desired window to view topline metrics")
-    days = st.number_input("Select window", value=30, min_value=1, max_value=730)
+    
+    days = st.select_slider("Select window (days)", value=30, options=[1, 7, 10, 14, 21, 30, 45, 60, 75, 90, 180, 365])
+    # days = st.select_slider("Select window", value=30, min_value=1, max_value=730)
 
 # client summary data TODO: use this data in the dashboard
 # client_summary_totals = pd.read_csv('data/client_summary_totals.csv')
@@ -434,17 +433,25 @@ appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
 appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
 delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
+new_appts = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+follow_up_appts = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+
 total_paid_this_year = appts_this_year['Price'].sum()
 total_paid_last_year = appts_last_year['Price'].sum()
 delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
 
 with st.container():
-    header_col1, header_col2 = st.columns(2)
+    header_col1, header_col2, header_col3 = st.columns(3)
 
     with header_col1:
-        st.metric(value=f"{millify(len(appts_this_year), precision=2)}", label=f"Appointments last {days} days", 
+        st.metric(value=f"{millify(len(new_appts), precision=2)}", label=f"New appointments last {days} days", 
                     delta=f"{delta_appts_pct*100:.1f}%")
+    
     with header_col2:
+        st.metric(value=f"{millify(len(follow_up_appts), precision=2)}", label=f"Follow-up appointments last {days} days", 
+                    delta=f"{delta_appts_pct*100:.1f}%")
+    
+    with header_col3:
         st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue last {days} days",
                     delta=f"{delta_paid_pct*100:.1f}%")
 
