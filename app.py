@@ -185,7 +185,7 @@ def get_delta_pct(current_data, previous_data):
 
     return delta_pct, curr_line_color, curr_line_color_bg
 
-@st.cache_data
+
 def create_combined_data(current_data, previous_data):
    
     delta_pct, curr_line_color, curr_line_color_bg = get_delta_pct(current_data, previous_data)
@@ -384,25 +384,6 @@ def load_data(run_live=False):
 
         return clients, appts
 
-@st.cache_data
-def filter_data(appts, days):
-    appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
-    appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
-    appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
-    delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
-
-    new_appts_this_year = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
-    new_appts_last_year = appts_last_year[~(appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
-    delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
-    follow_up_appts_this_year = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
-    follow_up_appts_last_year = appts_last_year[appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
-    delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
-
-    total_paid_this_year = appts_this_year['Price'].sum()
-    total_paid_last_year = appts_last_year['Price'].sum()
-    delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
-
-    return new_appts_this_year, follow_up_appts_this_year, delta_new_appts_pct, delta_follow_up_appts_pct, total_paid_this_year, delta_paid_pct
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
 # ************************************************************************************
@@ -474,6 +455,10 @@ with st.sidebar:
 # client_summary_totals['TotalAppointments'] = client_summary_totals['TotalAppointments'].astype(int)
 # client_summary_totals['TotalPaidAmount'] = client_summary_totals['TotalPaidAmount'].astype(float)
 
+# load data
+with st.spinner("Loading data...", show_time=True):
+    df, appts = load_data(run_live=False)
+
 st.header('Onboarding Analysis')
 days = st.pills(
     "filter data",
@@ -490,13 +475,24 @@ else:
 
 now = datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date()
 
-# load data
-with st.spinner("Loading data...", show_time=True):
-    df, appts = load_data(run_live=False)
 
 
+appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
+appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
+appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
+delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
-new_appts_this_year, follow_up_appts_this_year, delta_new_appts_pct, delta_follow_up_appts_pct, delta_paid_pct, total_paid_this_year = filter_data(appts, days)
+new_appts_this_year = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+new_appts_last_year = appts_last_year[~(appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
+delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
+follow_up_appts_this_year = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+follow_up_appts_last_year = appts_last_year[appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
+delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
+
+total_paid_this_year = appts_this_year['Price'].sum()
+total_paid_last_year = appts_last_year['Price'].sum()
+delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
+
 metric_label = f'{days} days'
 if days == 1:
     metric_label = '24 hours'
