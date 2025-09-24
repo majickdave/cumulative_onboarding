@@ -21,7 +21,7 @@ def run_data_pipeline(clients, appts, run_live=True):
 
         if 'Date' not in appts.columns:
             appts.rename(columns={'DateCreated': 'Date'}, inplace=True)
-        cols_to_write = ['Id', 'Date', 'Status', 'CancellationDate', 'Price', 'ServiceId', 'ClientId']
+        cols_to_write = ['Id', 'Date', 'Status', 'CancellationDate', 'Price', 'ServiceId', 'ClientId', 'PractitionerId']
         if appts['Date'].dtype == float:
             appts['Date'] = pd.to_datetime(appts['Date'], unit="ms").dt.strftime("%Y-%m-%d %H:%M")
         if appts['CancellationDate'].dtype == float:

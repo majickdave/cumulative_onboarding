@@ -228,6 +228,7 @@ def create_combined_chart(curr, prev, curr_line_color, curr_line_color_bg, marke
             x=curr['date_created'],
             y=curr['cumsum'],
             fill='tonexty',
+            fillcolor=curr_line_color,
             text=curr['count'],
             line_color=curr_line_color_bg,
             # fill='tozeroy',
@@ -384,29 +385,31 @@ def load_data(run_live=False):
 
         return clients, appts
 
-def filter_data(appts, days):
+def filter_data(practitioner_appts, days):
     now = CURRENT_DATE
     # filter appointments
-    appts = appts[(appts['CancellationDate'].isna()) & (appts['Status'] == 'Confirmed')]
-    appts_this_year = appts[appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
-    appts_last_year = appts[(appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & (appts['Date'].dt.date < now - pd.Timedelta(days=days))]
+    practitioner_appts = practitioner_appts[(practitioner_appts['CancellationDate'].isna()) & (practitioner_appts['Status'] == 'Confirmed')]
+    appts_this_year = practitioner_appts[practitioner_appts['Date'].dt.date >= now - pd.Timedelta(days=days)]
+    appts_last_year = practitioner_appts[(practitioner_appts['Date'].dt.date >= now - pd.Timedelta(days=days*2)) & 
+                                         (practitioner_appts['Date'].dt.date < now - pd.Timedelta(days=days))]
     # delta_appts_pct = calc_delta(len(appts_this_year), len(appts_last_year))
 
     new_appts_this_year = appts_this_year[~(appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
     new_appts_last_year = appts_last_year[~(appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74')]
-    delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
+
     follow_up_appts_this_year = appts_this_year[appts_this_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
     follow_up_appts_last_year = appts_last_year[appts_last_year['ServiceId'] == '1efe2465-4741-48c8-8408-114818cdce74']
-    delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
 
     total_paid_this_year = appts_this_year['Price'].sum()
     total_paid_last_year = appts_last_year['Price'].sum()
-    delta_paid_pct = calc_delta( total_paid_this_year, total_paid_last_year)
 
-    return appts, new_appts_this_year, delta_new_appts_pct, follow_up_appts_this_year, delta_follow_up_appts_pct, total_paid_this_year, delta_paid_pct
+    return (new_appts_this_year, new_appts_last_year, follow_up_appts_this_year,
+            follow_up_appts_last_year, total_paid_this_year, total_paid_last_year)
+
 # ************************************************************************************
 # ____________________________________________Begin Dash______________________________
 # ************************************************************************************
+
 st.markdown(
     """
     <style>
@@ -417,15 +420,18 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 # set page config
 st.set_page_config(page_title="Cumulative Onboarding", page_icon="📈", layout='wide')
 YTD_days = ( datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date() - datetime.datetime(datetime.datetime.now(ZoneInfo("America/Los_Angeles")).year, 1, 1).date() ).days
+
 # Load your hero image
 try:
     hero_image = Image.open("public/images/hero.jpg") # Replace with your image path
 except FileNotFoundError:
     st.error("Hero image not found. Please ensure 'your_hero_image.jpg' is in the same directory.")
 
+# sidebar
 with st.sidebar:
     with st.container():
         # Add a title and description
@@ -498,13 +504,12 @@ labels = {
 options = labels.keys()
 
 # load data
-with st.spinner("Loading data...", show_time=True):
-    df, appts = load_data(run_live=False)
+df, appts = load_data(run_live=False)
 
 days = None
 # header container
 with st.container():
-    st.header('Performance Overview')
+    st.header('Performance Metrics Overview')
     days = st.pills(
         ':material/filter_list: filter',
         label_visibility='visible',
@@ -513,77 +518,79 @@ with st.container():
         format_func=lambda x: labels[x]
     )
 # set limits for markers
-if days and days < 30:
+if days and days < 60:
     show_markers = True
 else:
     show_markers = False
 
-if days:
 # set current date
-    now = CURRENT_DATE
+now = CURRENT_DATE
 
-    appts, new_appts_this_year, delta_new_appts_pct, follow_up_appts_this_year, delta_follow_up_appts_pct, total_paid_this_year, delta_paid_pct = filter_data(appts, days)
-    # set metric label
-    metric_label = f'{days} days'
-    if days == 1:
-        metric_label = '24 hours'
-    elif days == YTD_days:
-        metric_label = 'YTD'
-    else:
-        metric_label = labels[days]
+with st.container():
+    if days:
+        # set metric label
+        metric_label = f'{days} days'
+        if days == 1:
+            metric_label = '24 hours'
+        elif days == YTD_days:
+            metric_label = 'YTD'
+        else:
+            metric_label = labels[days]
 
-    # create header container for metrics
-    with st.container():
-        header_col1, header_col2, header_col3 = st.columns([1,1,1])
+        # Appointment Analysis
+        tab1, tab2, tab3 = st.tabs(["Total", "Practitioner1", "Practitioner2"])
+        for practitioner_id, tab in [('', tab1), ('6105fb763ccbf8258ce2b10a', tab2), ('6480ab3560413d84eebe6f1a', tab3)]:
+                # create header container for practioner metrics
+            with tab:  
+                if practitioner_id:
+                    practitioner_appts = appts.copy()
+                    practitioner_appts = practitioner_appts[practitioner_appts['PractitionerId'] == practitioner_id].sort_values(by='Date', ascending=False)
+                else:
+                    practitioner_appts = appts.copy()   
+                (new_appts_this_year, new_appts_last_year, follow_up_appts_this_year,
+                        follow_up_appts_last_year, total_paid_this_year, total_paid_last_year) = filter_data(practitioner_appts, days)
+                delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
+                delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
+                delta_paid_pct = calc_delta(total_paid_this_year, total_paid_last_year)
+                
+                header_col1, header_col2, header_col3 = st.columns([1,1,1])
+                with header_col1:
+                    st.metric(value=f"{millify(len(new_appts_this_year), precision=2)}", label=f"New appointments", 
+                                delta=f"{delta_new_appts_pct*100:.1f}%")
+                
+                with header_col2:
+                    st.metric(value=f"{millify(len(follow_up_appts_this_year), precision=2)}", label=f"Follow-ups", 
+                                delta=f"{delta_follow_up_appts_pct*100:.1f}%")
+                
+                with header_col3:
+                    st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue",
+                                delta=f"{delta_paid_pct*100:.1f}%")
 
-        with header_col1:
-            st.metric(value=f"{millify(len(new_appts_this_year), precision=2)}", label=f"New appointments", 
-                        delta=f"{delta_new_appts_pct*100:.1f}%")
-        
-        with header_col2:
-            st.metric(value=f"{millify(len(follow_up_appts_this_year), precision=2)}", label=f"Follow-ups", 
-                        delta=f"{delta_follow_up_appts_pct*100:.1f}%")
-        
-        with header_col3:
-            st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue",
-                        delta=f"{delta_paid_pct*100:.1f}%")
-    # create a container for the metrics
-    with st.expander(expanded=True, label=f"### Onboarding Analysis **{metric_label}**").container(border=False):        
-        col1, col2, col3 = st.columns(3, border=False)
-        # load data windows
+                        
+        ############## Onboarding Analysis
+        with st.expander(expanded=True, label=f"### Onboarding Analysis **{metric_label}**").container(border=False):        
+            col1, col2, col3 = st.columns(3, border=False)
+            # load data windows
 
-        data, current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
-            # with curr_tab:
-            #     generate_streamlit_chart(current_data, previous_data, days)
-                    # create window data
+            data, current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
+                # with curr_tab:
+                #     generate_streamlit_chart(current_data, previous_data, days)
+                        # create window data
 
-        combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
-        with col1:
-            if combined_data['combined_cumsum'].sum() > 0:
-                val = f"{current_data['cumsum'].max()}"
-            else:
-                val = '0'
-            with st.container(border=False):
-                st.metric(label=f"Current", 
-                    value=val, 
-                    delta=f"{delta_pct*100:.1f}%")
-                if val != '0':
-                    with st.container(border=False):
-                        generate_streamlit_chart(combined_data, show_markers, chart_id='col1_chart')
-
-        combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(previous_data, previous_data2)
-        with col2:
-            if combined_data['combined_cumsum'].sum() > 0:
-                val = f"{previous_data['cumsum'].max()}" 
-            else:
-                val = '0'
-            with st.container(border=False):
-                st.metric(label=f"Previous", 
-                        value=val,  
-                    delta=f"{delta_pct*100:.1f}%")
-                if val != '0':
-                    with st.container(border=False):
-                        generate_streamlit_chart(combined_data, show_markers, chart_id='col2_chart')
+        for col, period in [(col1, 'current'), (col2, 'previous')]:
+            combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
+            with col:
+                if combined_data['combined_cumsum'].sum() > 0:
+                    val = f"{current_data['cumsum'].max()}"
+                else:
+                    val = '0'
+                with st.container(border=False):
+                    st.metric(label=f"Current", 
+                        value=val, 
+                        delta=f"{delta_pct*100:.1f}%")
+                    if val != '0':
+                        with st.container(border=False):
+                            generate_streamlit_chart(combined_data, show_markers, chart_id=period)
 
         days *= 2       
         data, current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
@@ -602,23 +609,33 @@ if days:
                         generate_streamlit_chart(combined_data, show_markers, chart_id='col3_chart')
                 # with overall_tab:
                 #     generate_streamlit_chart(current_data, previous_data, days)
-else:
-    first_appt_date = appts['Date'].min().date()
-    total_days = (CURRENT_DATE - first_appt_date).days
-    st.markdown(f"### {appts['Date'].min().date().strftime('%a %b %d, %Y')} to {appts['Date'].max().date().strftime('%a %b %d, %Y')}")
-    appts, new_appts_this_year, delta_new_appts_pct, follow_up_appts_this_year, delta_follow_up_appts_pct, total_paid_this_year, delta_paid_pct = filter_data(appts, total_days)
-    
-    with st.container():
-        header_col1, header_col2, header_col3 = st.columns([1,1,1])
 
-        with header_col1:
-            st.metric(value=f"{millify(len(new_appts_this_year), precision=2)}", label=f"New appointments")
+    # No Filter - All time stats
+    else:
+        st.write("Choose a filter 👆")
+
+        first_appt_date = appts['Date'].min().date()
+        total_days = (CURRENT_DATE - first_appt_date).days
+        st.markdown("### All Time")
+        st.markdown(f"{appts['Date'].min().date().strftime('%a %b %d, %Y')} to {appts['Date'].max().date().strftime('%a %b %d, %Y')}")
+        days = (now - appts['Date'].min().date()).days
+        (new_appts_this_year, new_appts_last_year, follow_up_appts_this_year,
+                        follow_up_appts_last_year, total_paid_this_year, total_paid_last_year) = filter_data(appts, days)
+        delta_new_appts_pct = calc_delta(len(new_appts_this_year), len(new_appts_last_year))
+        delta_follow_up_appts_pct = calc_delta(len(follow_up_appts_this_year), len(follow_up_appts_last_year))
+        delta_paid_pct = calc_delta(total_paid_this_year, total_paid_last_year)
         
-        with header_col2:
-            st.metric(value=f"{millify(len(follow_up_appts_this_year), precision=2)}", label=f"Follow-ups")
-        
-        with header_col3:
-            st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue")
+        with st.container():
+            header_col1, header_col2, header_col3 = st.columns([1,1,1])
+
+            with header_col1:
+                st.metric(value=f"{millify(len(new_appts_this_year), precision=2)}", label=f"New appointments")
+            
+            with header_col2:
+                st.metric(value=f"{millify(len(follow_up_appts_this_year), precision=2)}", label=f"Follow-ups")
+            
+            with header_col3:
+                st.metric(value=f"${millify(total_paid_this_year, precision=1)}", label=f"Revenue")
     
 
     
