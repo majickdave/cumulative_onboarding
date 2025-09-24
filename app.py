@@ -572,26 +572,28 @@ with st.container():
             col1, col2, col3 = st.columns(3, border=False)
             # load data windows
 
-            data, current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
-                # with curr_tab:
-                #     generate_streamlit_chart(current_data, previous_data, days)
-                        # create window data
+        data, current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
+            # with curr_tab:
+            #     generate_streamlit_chart(current_data, previous_data, days)
+                    # create window data
 
-        for col, period in [(col1, 'current'), (col2, 'previous')]:
-            combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
+        # create current and previous chart
+        for col, period, (curr, prev) in [(col1, 'current', (current_data, previous_data)), (col2, 'previous', (previous_data, previous_data2))]:
+            combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(curr, prev)
             with col:
                 if combined_data['combined_cumsum'].sum() > 0:
-                    val = f"{current_data['cumsum'].max()}"
+                    val = f"{curr['cumsum'].max()}"
                 else:
                     val = '0'
                 with st.container(border=False):
-                    st.metric(label=f"Current", 
+                    st.metric(label=period, 
                         value=val, 
                         delta=f"{delta_pct*100:.1f}%")
                     if val != '0':
                         with st.container(border=False):
                             generate_streamlit_chart(combined_data, show_markers, chart_id=period)
 
+        # created combined chart
         days *= 2       
         data, current_data, previous_data, previous_data2, previous_data3 = get_window_data(df, days)
         combined_data, delta_pct, curr_line_color, curr_line_color_bg = create_combined_data(current_data, previous_data)
