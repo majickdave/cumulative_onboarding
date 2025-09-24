@@ -1,0 +1,1 @@
+* * * * * flock -w 0 /tmp/myjob.lock /Users/davidsamuel/Desktop/mindtree_repo/cumulative_onboarding/run_scripts.sh
