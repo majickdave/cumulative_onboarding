@@ -48,10 +48,12 @@ if __name__ == "__main__":
     clients, appts = run_data_pipeline(clients, appts, run_live=False)
 
     path = 'data/dates.csv'
+    clients = clients.sort_values(by='ClientId', ascending=False)
     clients.to_csv(path, encoding='utf-8', index=False)
     print(f'\nwrote to {path}')
 
     path = 'data/appt_dates.csv'
+    appts = appts.sort_values(by='Id', ascending=False)
     appts.to_csv(path, encoding='utf-8', index=False)
     print(f'\nwrote to {path}')
 

@@ -79,8 +79,6 @@ def get_period(plot_data, prev_plot_data, x):
     elif x < prev_plot_data.index[0] and x >= plot_data.index[0]:
         return 'previous'
 
-
-@st.cache_data
 def get_window_data(df, days):
     """
     A function to get the window data
@@ -182,7 +180,6 @@ def get_delta_pct(current_data, previous_data):
 
     return delta_pct, curr_line_color, curr_line_color_bg
 
-st.cache_data()
 def create_combined_data(current_data, previous_data):
    
     delta_pct, curr_line_color, curr_line_color_bg = get_delta_pct(current_data, previous_data)
@@ -365,7 +362,6 @@ def generate_streamlit_chart(combined_data, show_markers, chart_id):
     #                                color='period')
     #     line_chart.add_rows(curr)
 
-@st.cache_data
 def load_data(run_live=False):
     clients, appts = None, None
     with st.spinner("Refreshing data..."):

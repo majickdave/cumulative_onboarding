@@ -38,9 +38,7 @@ def update_appointments_data():
     df = pd.read_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/appointments.csv')
     #last updated
     last_updated = pd.to_datetime(df['DateCreated'], unit='ms', utc=True).sort_values().max()
-    if last_updated.date() == TODAY:
-        print("Appointment data is already up to date.")
-    else:
+    if datetime.now(ZoneInfo("UTC")) > last_updated:
         # create start date from most recent appointment DateCreated
         start_date = last_updated.strftime('%Y-%m-%d')
         end_date = (TODAY + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
@@ -48,13 +46,13 @@ def update_appointments_data():
         print(f"Fetching appointments updated since {start_date} to {end_date}")
         response = fetch_appointments_scheduled_between(start_date, end_date)
         new_data = pd.DataFrame(response)
-        if not new_data.empty:
+        if not new_data.dropna().empty:
             # Keep only rows in new_data whose 'Id' is not already in df
             new_unique = new_data[~new_data['Id'].isin(df['Id'])]
             print(f"{len(new_unique)} new appointments")
 
             # Concatenate
-            if not new_unique.empty and not new_unique.isna().all():
+            if not new_unique.dropna().empty:
                 print("No new unique appointments to add.")
                 new_appts = pd.concat([df, new_unique], ignore_index=True)
                 new_appts.to_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/appointments.csv', index=False)
@@ -90,10 +88,8 @@ def update_clients_data():
     # load existing data
     df = pd.read_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/clients.csv')
     # check most recent date created
-    last_updated = pd.to_datetime(df['DateCreated'], unit='ms', utc=True).sort_values().max()
-    if last_updated.date() == TODAY:
-        print("Client data is already up to date.")
-    else:
+    last_updated = pd.to_datetime(df['DateCreated'], unit='ms', utc=True).max()
+    if datetime.now(ZoneInfo("UTC")) > last_updated:
         # create start date from most recent appointment DateCreated
         start_date = last_updated.strftime('%Y-%m-%d')
         end_date = (TODAY + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
@@ -101,12 +97,12 @@ def update_clients_data():
         print(f"Fetching clients created between {start_date} and {end_date}")
         response = fetch_clients_created_between(start_date, end_date)
         new_data = pd.DataFrame(response)
-        if not new_data.empty:
+        if not new_data.dropna().empty:
             # Keep only rows in new_data whose 'ClientId' is not already in df
             new_unique = new_data[~new_data['ClientId'].isin(df['ClientId'])]
             print(f"{len(new_unique)} new clients")
 
-            if not new_unique.empty and not new_unique.isna().all():
+            if not new_unique.dropna().empty:
                 # Concatenate
                 new_clients = pd.concat([df, new_unique], ignore_index=True)
                 new_clients.to_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/clients.csv', index=False)
