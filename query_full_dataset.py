@@ -1,7 +1,6 @@
 # file: export_intakeq_appointments.py
-import csv, os, time, requests
+import os, time
 import pandas as pd
-from datetime import datetime
 from dotenv import load_dotenv
 from rate_limit_utils import create_api_session, make_rate_limited_request
 

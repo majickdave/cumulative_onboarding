@@ -9,7 +9,7 @@ load_dotenv()
 
 API_KEY = os.getenv("INTAKEQ_API_KEY")
 BASE = "https://intakeq.com/api/v1/"
-TODAY = datetime.now(ZoneInfo("UTC")).date()
+TODAY = datetime.now(ZoneInfo("America/Los_Angeles")).date()
 
 def fetch_appointments_scheduled_between(start_date, end_date):
     """
@@ -37,8 +37,8 @@ def update_appointments_data():
     # load existing data
     df = pd.read_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/appointments.csv')
     #last updated
-    last_updated = pd.to_datetime(df['DateCreated'], unit='ms', utc=True).sort_values().max()
-    if datetime.now(ZoneInfo("UTC")) > last_updated:
+    last_updated = pd.to_datetime(df['DateCreated'], unit='ms').max().tz_localize('America/Los_Angeles')
+    if datetime.now(ZoneInfo("America/Los_Angeles")) > last_updated:
         # create start date from most recent appointment DateCreated
         start_date = last_updated.strftime('%Y-%m-%d')
         end_date = (TODAY + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
@@ -88,8 +88,8 @@ def update_clients_data():
     # load existing data
     df = pd.read_csv('/Users/davidsamuel/Projects/cumulative_onboarding/data/clients.csv')
     # check most recent date created
-    last_updated = pd.to_datetime(df['DateCreated'], unit='ms', utc=True).max()
-    if datetime.now(ZoneInfo("UTC")) > last_updated:
+    last_updated = pd.to_datetime(df['DateCreated'], unit='ms').max().tz_localize('America/Los_Angeles')
+    if datetime.now(ZoneInfo("America/Los_Angeles")) > last_updated:
         # create start date from most recent appointment DateCreated
         start_date = last_updated.strftime('%Y-%m-%d')
         end_date = (TODAY + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
